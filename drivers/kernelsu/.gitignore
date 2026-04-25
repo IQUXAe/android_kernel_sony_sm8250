@@ -20,5 +20,5 @@ obj/
 CLAUDE.md
 .ddk-version
 .vscode/settings.json
-check_symbol
-ksu_uapi.h
+
+tools/check_symbol
