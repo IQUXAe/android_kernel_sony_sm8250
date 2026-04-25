@@ -139,4 +139,8 @@ kernel/configs/android-*.cfg
 #Ignoring Android.bp link file
 #
 Android.bp
+
+# Other
 build_pdx206_kernel.sh
+out
+AnyKernel3-sm8250
