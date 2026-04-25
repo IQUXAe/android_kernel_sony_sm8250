@@ -1032,13 +1032,14 @@ EXPORT_SYMBOL(pagevec_lookup_range_nr_tag);
  */
 void __init swap_setup(void)
 {
-	unsigned long megs = totalram_pages >> (20 - PAGE_SHIFT);
-
-	/* Use a smaller cluster for small-memory machines */
-	if (megs < 16)
-		page_cluster = 2;
-	else
-		page_cluster = 3;
+	/*
+	 * Phones typically rely on zram rather than a high-latency rotating
+	 * swap device. Disabling swap readahead by default avoids pulling in
+	 * neighbouring compressed pages that usually do not help and only add
+	 * CPU and memory pressure. Userspace can still override this later via
+	 * /proc/sys/vm/page-cluster if needed.
+	 */
+	page_cluster = 0;
 	/*
 	 * Right now other parts of the system means that we
 	 * _really_ don't want to cluster much more
