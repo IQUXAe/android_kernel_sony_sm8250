@@ -189,6 +189,7 @@ int susfs_add_sus_path_loop(struct st_susfs_sus_path* __user user_info);
 #endif
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 void susfs_set_hide_sus_mnts_for_non_su_procs(void __user *arg);
+bool susfs_is_hide_sus_mnts_for_non_su_procs_enabled(void);
 bool susfs_is_current_proc_umounted(void);
 #endif
 #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
@@ -198,6 +199,7 @@ void susfs_enable_log(void __user *arg);
 int susfs_add_sus_map(void __user *arg);
 #endif
 void susfs_set_avc_log_spoofing(void __user *arg);
+bool susfs_is_avc_log_spoofing_enabled(void);
 void susfs_get_enabled_features(void __user *arg);
 void susfs_show_variant(void __user *arg);
 void susfs_show_version(void __user *arg);

@@ -926,13 +926,30 @@ int susfs_add_sus_path_loop(struct st_susfs_sus_path* __user user_info) {
 /* susfs_set_hide_sus_mnts_for_non_su_procs */
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 static bool susfs_hide_sus_mnts_for_non_su_procs = true;
+bool susfs_is_hide_sus_mnts_for_non_su_procs_enabled(void)
+{
+	if (!READ_ONCE(susfs_hide_sus_mnts_for_non_su_procs))
+		return false;
+
+	/*
+	 * Keep SUS mounts visible for root and KernelSU contexts so toggling
+	 * the feature cannot lock us out of debugging or root flows.
+	 */
+	if (current_uid().val == 0 || susfs_is_current_ksu_domain())
+		return false;
+
+	return true;
+}
+
 void susfs_set_hide_sus_mnts_for_non_su_procs(void __user *arg) {
 	bool val;
+
 	if (copy_from_user(&val, arg, sizeof(val))) {
 		SUSFS_LOGE("failed copying from userspace\n");
 		return;
 	}
-	susfs_hide_sus_mnts_for_non_su_procs = val;
+
+	WRITE_ONCE(susfs_hide_sus_mnts_for_non_su_procs, val);
 	SUSFS_LOGI("hide_sus_mnts_for_non_su_procs set to: %d\n", val);
 }
 #endif
@@ -960,13 +977,20 @@ int susfs_add_sus_map(void __user *arg) {
 
 /* susfs_set_avc_log_spoofing - AVC log spoofing */
 static bool susfs_avc_log_spoofing_enabled = false;
+bool susfs_is_avc_log_spoofing_enabled(void)
+{
+	return READ_ONCE(susfs_avc_log_spoofing_enabled);
+}
+
 void susfs_set_avc_log_spoofing(void __user *arg) {
 	bool val;
+
 	if (copy_from_user(&val, arg, sizeof(val))) {
 		SUSFS_LOGE("failed copying from userspace\n");
 		return;
 	}
-	susfs_avc_log_spoofing_enabled = val;
+
+	WRITE_ONCE(susfs_avc_log_spoofing_enabled, val);
 	SUSFS_LOGI("avc_log_spoofing set to: %d\n", val);
 }
 
@@ -1019,17 +1043,23 @@ void susfs_show_version(void __user *arg) {
 }
 
 /* susfs_start_sdcard_monitor_fn - stub */
+static bool susfs_sdcard_monitor_started;
 void susfs_start_sdcard_monitor_fn(void) {
-	SUSFS_LOGI("susfs_start_sdcard_monitor_fn: not implemented\n");
+	if (READ_ONCE(susfs_sdcard_monitor_started))
+		return;
+
+	WRITE_ONCE(susfs_sdcard_monitor_started, true);
+	SUSFS_LOGI("susfs_start_sdcard_monitor_fn: monitoring is deferred, state marked as started only\n");
 }
 
 /* susfs_is_current_proc_umounted - check if current process uses separate mnt namespace */
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 bool susfs_is_current_proc_umounted(void) {
-	return false;
+	return !!(READ_ONCE(current->susfs_task_state) & TASK_STRUCT_MNT_NS_UMOUNTED);
 }
 
 void susfs_set_current_proc_umounted(void) {
+	current->susfs_task_state |= TASK_STRUCT_MNT_NS_UMOUNTED;
 }
 #endif
 
@@ -1041,5 +1071,40 @@ void susfs_try_umount_all(uid_t target_uid) {
 
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 void susfs_run_sus_path_loop(void) {
+	struct st_susfs_sus_path_hlist *entry;
+	struct hlist_node *tmp_node;
+	struct st_susfs_sus_path_hlist *snapshot = NULL;
+	int bkt;
+	int count = 0;
+	int idx = 0;
+
+	spin_lock(&susfs_spin_lock);
+	hash_for_each(SUS_PATH_HLIST, bkt, entry, node) {
+		count++;
+	}
+	spin_unlock(&susfs_spin_lock);
+
+	if (!count)
+		return;
+
+	snapshot = kcalloc(count, sizeof(*snapshot), GFP_KERNEL);
+	if (!snapshot) {
+		SUSFS_LOGE("susfs_run_sus_path_loop: no enough memory for snapshot\n");
+		return;
+	}
+
+	spin_lock(&susfs_spin_lock);
+	hash_for_each_safe(SUS_PATH_HLIST, bkt, tmp_node, entry, node) {
+		if (idx >= count)
+			break;
+		memcpy(&snapshot[idx++], entry, sizeof(*entry));
+	}
+	spin_unlock(&susfs_spin_lock);
+
+	while (idx-- > 0) {
+		susfs_update_sus_path_inode(snapshot[idx].target_pathname);
+	}
+
+	kfree(snapshot);
 }
 #endif

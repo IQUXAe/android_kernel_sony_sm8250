@@ -58,6 +58,7 @@
 #define INODE_STATE_OPEN_REDIRECT BIT(27)
 
 #define TASK_STRUCT_NON_ROOT_USER_APP_PROC BIT(24)
+#define TASK_STRUCT_MNT_NS_UMOUNTED BIT(25)
 
 #define MAGIC_MOUNT_WORKDIR "/debug_ramdisk/workdir"
 #define DATA_ADB_UMOUNT_FOR_ZYGOTE_SYSTEM_PROCESS "/data/adb/susfs_umount_for_zygote_system_process"

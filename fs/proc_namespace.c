@@ -13,7 +13,7 @@
 #include <linux/fs_struct.h>
 #include <linux/sched/task.h>
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-#include <linux/susfs_def.h>
+#include <linux/susfs.h>
 #endif
 
 #include "proc/internal.h" /* only for get_proc_task() in ->open() */
@@ -106,7 +106,8 @@ static int show_vfsmnt(struct seq_file *m, struct vfsmount *mnt)
 	int err;
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (unlikely(r->mnt_id >= DEFAULT_SUS_MNT_ID))
+	if (susfs_is_hide_sus_mnts_for_non_su_procs_enabled() &&
+	    unlikely(r->mnt_id >= DEFAULT_SUS_MNT_ID))
 		return 0;
 #endif
 
@@ -147,7 +148,8 @@ static int show_mountinfo(struct seq_file *m, struct vfsmount *mnt)
 	int err;
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (unlikely(r->mnt_id >= DEFAULT_SUS_MNT_ID))
+	if (susfs_is_hide_sus_mnts_for_non_su_procs_enabled() &&
+	    unlikely(r->mnt_id >= DEFAULT_SUS_MNT_ID))
 		return 0;
 #endif
 
@@ -216,7 +218,8 @@ static int show_vfsstat(struct seq_file *m, struct vfsmount *mnt)
 	int err;
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (unlikely(r->mnt_id >= DEFAULT_SUS_MNT_ID))
+	if (susfs_is_hide_sus_mnts_for_non_su_procs_enabled() &&
+	    unlikely(r->mnt_id >= DEFAULT_SUS_MNT_ID))
 		return 0;
 #endif
 
