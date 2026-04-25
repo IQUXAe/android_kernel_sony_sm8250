@@ -128,9 +128,8 @@ int __init kernelsu_init(void)
 	susfs_init();
 #endif // #ifdef CONFIG_KSU_SUSFS
 
-#ifndef CONFIG_KSU_SUSFS
 	ksu_ksud_init();
-#endif // #ifndef CONFIG_KSU_SUSFS
+
 
 	ksu_file_wrapper_init();
 
@@ -159,9 +158,7 @@ void kernelsu_exit(void)
 	 defined(CONFIG_KSU_MANUAL_HOOK))
 	ksu_observer_exit();
 #endif
-#ifndef CONFIG_KSU_SUSFS
 	ksu_ksud_exit();
-#endif // #ifndef CONFIG_KSU_SUSFS
 #ifdef CONFIG_KSU_SYSCALL_HOOK
 	ksu_syscall_hook_manager_exit();
 #endif

@@ -193,3 +193,9 @@ void ksu_kernel_umount_exit(void)
 {
 	ksu_unregister_feature_handler(KSU_FEATURE_KERNEL_UMOUNT);
 }
+
+/* SUSFS compatibility wrapper */
+void ksu_try_umount(const char *mnt, bool check_mnt, int flags, uid_t uid)
+{
+	try_umount(mnt, flags);
+}

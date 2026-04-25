@@ -245,6 +245,33 @@ int __maybe_unused ksu_handle_devpts(struct inode *inode)
 }
 #else
 // the call from execve_handler_pre won't provided correct value for __never_use_argument, use them after fix execve_handler_pre, keeping them for consistence for manually patched code
+int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
+			       void *__never_use_argv, void *__never_use_envp,
+			       int *__never_use_flags)
+{
+	char path[sizeof(su_path) + 1] = { 0 };
+
+	if (unlikely(!filename_user))
+		return 0;
+
+	if (!ksu_is_allow_uid_for_current(current_uid().val)) {
+		write_sulog('$');
+		return 0;
+	}
+
+	ksu_strncpy_from_user_nofault(path, *filename_user, sizeof(path));
+	if (likely(memcmp(path, su_path, sizeof(su_path))))
+		return 0;
+
+	write_sulog('x');
+	pr_info("ksu_handle_execve_sucompat: su found\n");
+	*filename_user = ksud_user_path();
+
+	escape_with_root_profile();
+
+	return 0;
+}
+
 int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 				 void *__never_use_argv, void *__never_use_envp,
 				 int *__never_use_flags)

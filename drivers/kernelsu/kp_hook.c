@@ -18,12 +18,13 @@
 
 // ksud.c
 
-static struct work_struct stop_vfs_read_work, stop_init_rc_hook_work,
-	stop_execve_hook_work, stop_input_hook_work;
 
 extern const size_t ksu_rc_len;
 
 #ifndef CONFIG_KSU_SUSFS
+static struct work_struct stop_vfs_read_work, stop_init_rc_hook_work,
+	stop_execve_hook_work, stop_input_hook_work;
+
 static int sys_execve_handler_pre(struct kprobe *p, struct pt_regs *regs)
 {
 	struct pt_regs *real_regs = PT_REAL_REGS(regs);
@@ -133,7 +134,97 @@ static void do_stop_input_hook(struct work_struct *work)
 {
 	unregister_kprobe(&input_event_kp);
 }
-#endif // #ifndef CONFIG_KSU_SUSFS
+#else /* CONFIG_KSU_SUSFS */
+
+/*
+ * SUSFS build: kprobe handlers use the SUSFS VFS-level read hook instead
+ * of the kprobe-based fstat/read mechanism. execve and input handlers remain
+ * the same since they don't conflict with SUSFS.
+ */
+static struct work_struct stop_vfs_read_work, stop_init_rc_hook_work,
+	stop_execve_hook_work, stop_input_hook_work;
+
+static int sys_execve_handler_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct pt_regs *real_regs = PT_REAL_REGS(regs);
+	const char __user **filename_user =
+		(const char **) &PT_REGS_PARM1(real_regs);
+	const char __user *const __user *__argv =
+		(const char __user *const __user *)PT_REGS_PARM2(real_regs);
+	struct user_arg_ptr argv = { .ptr.native = __argv };
+	struct filename filename_in, *filename_p;
+	char path[32];
+
+	if (!filename_user)
+		return 0;
+	if (!ksu_retry_filename_access(filename_user, path, 32, false))
+		return 0;
+
+	filename_in.name = path;
+	filename_p = &filename_in;
+	return ksu_handle_execveat_ksud((int *)AT_FDCWD, &filename_p, &argv,
+					NULL, NULL);
+}
+
+static int sys_read_handler_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct pt_regs *real_regs = PT_REAL_REGS(regs);
+	unsigned int fd = PT_REGS_PARM1(real_regs);
+	ksu_handle_sys_read(fd);
+	return 0;
+}
+
+static int sys_fstat_handler_pre(struct kretprobe_instance *p,
+				 struct pt_regs *regs)
+{
+	struct pt_regs *real_regs = PT_REAL_REGS(regs);
+	unsigned int fd = PT_REGS_PARM1(real_regs);
+	*(int *)(p->data) = fd;
+	return 0;
+}
+
+extern void ksu_handle_vfs_fstat(int fd, loff_t *kstat_size_ptr);
+
+static int sys_fstat_handler_post(struct kretprobe_instance *p,
+				  struct pt_regs *regs)
+{
+	/* For SUSFS, fstat hooking is handled via ksu_handle_vfs_fstat VFS hook.
+	 * This post-handler intentionally left empty. */
+	return 0;
+}
+
+static int input_handle_event_handler_pre(struct kprobe *p,
+					  struct pt_regs *regs)
+{
+	unsigned int *type = (unsigned int *) &PT_REGS_PARM2(regs);
+	unsigned int *code = (unsigned int *) &PT_REGS_PARM3(regs);
+	int *value = (int *) &PT_REGS_CCALL_PARM4(regs);
+	return ksu_handle_input_handle_event(type, code, value);
+}
+
+static DECL_KP(execve_kp, SYS_EXECVE_SYMBOL, sys_execve_handler_pre);
+static DECL_KP(sys_read_kp, SYS_READ_SYMBOL, sys_read_handler_pre);
+static DECL_KRP(sys_fstat_kp, SYS_FSTAT_SYMBOL, sys_fstat_handler_pre,
+		sys_fstat_handler_post);
+static DECL_KP(input_event_kp, "input_event", input_handle_event_handler_pre);
+
+static void do_stop_init_rc_hook(struct work_struct *work)
+{
+	unregister_kprobe(&sys_read_kp);
+	unregister_kretprobe(&sys_fstat_kp);
+}
+
+static void do_stop_execve_hook(struct work_struct *work)
+{
+	unregister_kprobe(&execve_kp);
+}
+
+static void do_stop_input_hook(struct work_struct *work)
+{
+	unregister_kprobe(&input_event_kp);
+}
+
+#endif /* CONFIG_KSU_SUSFS */
 
 void kp_handle_ksud_stop(enum ksud_stop_code stop_code)
 {

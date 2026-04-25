@@ -155,6 +155,59 @@ config KSU_SUSFS_SUS_MAP
         - It may not be able to evade detections by apps that implement a good injection detection.
         - Effective only on zygote spawned umounted user app process >= 10000.
 
+config KSU_SUSFS_TRY_UMOUNT
+    bool "Enable to use ksu's try_umount to umount suspicious path upon process before systemcall hooks"
+    depends on KSU_SUSFS
+    default y
+    help
+        - Use ksu's try_umount to umount user-defined paths for all processes or processes with specific uid.
+        - Effective on all processes.
+
+config KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT
+    bool "Enable to automatically add suspicious bind mounts to sus_mount"
+    depends on KSU_SUSFS_SUS_MOUNT
+    default y
+    help
+        - Automatically add the suspicious bind mounts to sus_mount when KSU process does a bind mount.
+        - Effective on all non-root processes.
+
+config KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
+    bool "Enable to automatically add KSU default mounts to sus_mount"
+    depends on KSU_SUSFS_SUS_MOUNT
+    default y
+    help
+        - Automatically add the KSU default bind mount paths to sus_mount.
+        - Effective on all non-root processes.
+
+config KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
+    bool "Enable to automatically add bind mount paths to try_umount list"
+    depends on KSU_SUSFS_TRY_UMOUNT
+    default y
+    help
+        - Automatically add the bind mount paths to try_umount list when KSU process does a bind mount.
+        - Effective on all non-root processes.
+
+config KSU_SUSFS_SUS_OVERLAYFS
+    bool "Enable to fix up overlayfs related issues"
+    depends on KSU_SUSFS
+    default y
+    help
+        - Fix up the overlayfs related issues.
+
+config KSU_SUSFS_SUS_SU
+    bool "Enable to support sus_su that disable the default KSU su driver and use a different SU"
+    depends on KSU_SUSFS
+    default n
+    help
+        - Allow disabling KSU su driver and using a suspicious looking su driver instead.
+
+config KSU_SUSFS_HAS_MAGIC_MOUNT
+    bool "Enable to support magic mount for bind mounts"
+    depends on KSU_SUSFS
+    default n
+    help
+        - Enable if your KernelSU uses magic mount mode for bind mounts.
+
 endmenu
 
 endmenu
