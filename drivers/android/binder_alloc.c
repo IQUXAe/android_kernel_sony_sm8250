@@ -356,10 +356,19 @@ static bool debug_low_async_space_locked(struct binder_alloc *alloc, int pid)
 	 * and at some point we'll catch them in the act. This is more efficient
 	 * than keeping a map per pid.
 	 */
-	struct rb_node *n = alloc->free_buffers.rb_node;
+	struct rb_node *n;
 	struct binder_buffer *buffer;
 	size_t total_alloc_size = 0;
 	size_t num_buffers = 0;
+
+	/*
+	 * Once we've already identified a likely oneway spammer, rescanning
+	 * the entire allocated buffer tree on every subsequent async
+	 * allocation does not provide additional signal until the async space
+	 * pressure is relieved and detection gets reset.
+	 */
+	if (alloc->oneway_spam_detected)
+		return false;
 
 	for (n = rb_first(&alloc->allocated_buffers); n != NULL;
 		 n = rb_next(n)) {
@@ -1303,4 +1312,3 @@ void binder_alloc_copy_from_buffer(struct binder_alloc *alloc,
 	binder_alloc_do_buffer_copy(alloc, false, buffer, buffer_offset,
 				    dest, bytes);
 }
-
