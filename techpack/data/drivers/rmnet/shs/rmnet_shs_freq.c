@@ -34,13 +34,26 @@ struct cpu_freq {
  * Keep SHS cpufreq forcing available for A/B, but default it off to avoid
  * redundant policy updates and frequency floor pinning on the RX fast path.
  */
-unsigned int rmnet_shs_freq_enable __read_mostly = 0;
+unsigned int rmnet_shs_freq_enable __read_mostly;
 module_param(rmnet_shs_freq_enable, uint, 0644);
 MODULE_PARM_DESC(rmnet_shs_freq_enable, "Enable/disable freq boost feature");
 
 struct workqueue_struct *shs_boost_wq;
 static DEFINE_PER_CPU(struct cpu_freq, cpu_boosts);
 static struct work_struct boost_cpu;
+
+static bool rmnet_shs_set_cpu_freq(unsigned int cpu, unsigned int floor,
+				   unsigned int ceil)
+{
+	struct cpu_freq *boost = &per_cpu(cpu_boosts, cpu);
+
+	if (boost->freq_floor == floor && boost->freq_ceil == ceil)
+		return false;
+
+	boost->freq_floor = floor;
+	boost->freq_ceil = ceil;
+	return true;
+}
 
 static int rmnet_shs_freq_notify(struct notifier_block *nb,
 				 unsigned long val,
@@ -95,18 +108,20 @@ void rmnet_shs_reset_freq(void)
 
 void rmnet_shs_boost_cpus(void)
 {
-	struct cpu_freq *boost;
+	bool changed = false;
 	int i;
 
 	for_each_possible_cpu(i) {
-
 		if ((1 << i) & PERF_MASK)
 			continue;
-		boost = &per_cpu(cpu_boosts, i);
-		boost->freq_floor = BOOST_FREQ;
-		boost->freq_ceil = MAX_FREQ;
-		trace_rmnet_freq_boost(i, boost->freq_floor);
+		if (!rmnet_shs_set_cpu_freq(i, BOOST_FREQ, MAX_FREQ))
+			continue;
+		trace_rmnet_freq_boost(i, BOOST_FREQ);
+		changed = true;
 	}
+
+	if (!changed)
+		return;
 
 	if (work_pending(&boost_cpu))
 		return;
@@ -117,18 +132,21 @@ void rmnet_shs_boost_cpus(void)
 
 void rmnet_shs_reset_cpus(void)
 {
-	struct cpu_freq *boost;
+	bool changed = false;
 	int i;
 
 	for_each_possible_cpu(i) {
-
 		if ((1 << i) & PERF_MASK)
 			continue;
-		boost = &per_cpu(cpu_boosts, i);
-		boost->freq_floor = MIN_FREQ;
-		boost->freq_ceil = MAX_FREQ;
-		trace_rmnet_freq_reset(i, boost->freq_floor);
+		if (!rmnet_shs_set_cpu_freq(i, MIN_FREQ, MAX_FREQ))
+			continue;
+		trace_rmnet_freq_reset(i, MIN_FREQ);
+		changed = true;
 	}
+
+	if (!changed)
+		return;
+
 	if (work_pending(&boost_cpu))
 		return;
 
@@ -138,7 +156,6 @@ void rmnet_shs_reset_cpus(void)
 
 int rmnet_shs_freq_init(void)
 {
-
 	if (!shs_boost_wq)
 		shs_boost_wq = alloc_workqueue("shs_boost_wq", WQ_HIGHPRI, 0);
 
