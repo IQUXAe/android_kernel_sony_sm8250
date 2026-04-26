@@ -159,5 +159,14 @@ static inline bool zram_dedup_enabled(struct zram *zram)
 #endif
 }
 
+static __always_inline unsigned long zram_entry_handle(struct zram *zram,
+		struct zram_entry *entry)
+{
+	if (zram_dedup_enabled(zram))
+		return entry->handle;
+
+	return (unsigned long)entry;
+}
+
 void zram_entry_free(struct zram *zram, struct zram_entry *entry);
 #endif
