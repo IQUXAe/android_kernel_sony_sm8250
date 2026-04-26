@@ -62,7 +62,7 @@ out:
 static int write_erase_count_show(struct seq_file *file, void *data)
 {
 	struct scsi_device *sdev;
-	unsigned char cmd[MAX_COMMAND_SIZE];
+	unsigned char cmd[MAX_COMMAND_SIZE] = { 0 };
 	uint32_t max_enhanced_count = 0;
 	uint32_t ave_enhanced_count = 0;
 	uint32_t max_normal_count = 0;
@@ -85,7 +85,12 @@ static int write_erase_count_show(struct seq_file *file, void *data)
 
 	buf_sz =  sizeof(struct ufs_data_in_upiu);
 	buf = kzalloc(buf_sz, GFP_KERNEL);
-	memset(cmd, 0, MAX_COMMAND_SIZE);
+	if (!buf) {
+		seq_puts(file, "buffer allocation failed\n");
+		scsi_device_put(sdev);
+		return 0;
+	}
+
 	cmd[0] = INQUIRY;
 	cmd[1] = (0x1A << 2) | EVPD;
 	cmd[2] = PAGE_CODE;
