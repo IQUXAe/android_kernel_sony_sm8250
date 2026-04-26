@@ -738,53 +738,51 @@ rmnet_perf_free_hash_table(void)
  **/
 bool rmnet_perf_opt_ingress(struct rmnet_perf_pkt_info *pkt_info)
 {
-	struct rmnet_perf_opt_flow_node *flow_node;
-	struct rmnet_perf_opt_flow_node *flow_node_recycled;
+	struct rmnet_perf_opt_flow_node *flow_node = NULL;
 	bool flush;
+	bool found = false;
 	bool handled = false;
-	bool flow_node_exists = false;
 
 	if (!rmnet_perf_optimize_protocol(pkt_info->trans_proto))
 		goto out;
 
-handle_pkt:
 	hash_for_each_possible(rmnet_perf_opt_fht, flow_node, list,
 			       pkt_info->hash_key) {
 		if (!rmnet_perf_opt_identify_flow(flow_node, pkt_info))
 			continue;
 
-		flush = rmnet_perf_opt_ip_flag_flush(flow_node, pkt_info);
-
-		/* set this to true by default. Let the protocol helpers
-		 * change this if it is needed.
-		 */
-		pkt_info->first_packet = true;
-		flow_node_exists = true;
-
-		switch (pkt_info->trans_proto) {
-		case IPPROTO_TCP:
-			rmnet_perf_tcp_opt_ingress(flow_node, pkt_info, flush);
-			handled = true;
-			goto out;
-		case IPPROTO_UDP:
-			rmnet_perf_udp_opt_ingress(flow_node, pkt_info, flush);
-			handled = true;
-			goto out;
-		default:
-			pr_err("%s(): Unhandled protocol %u\n",
-			       __func__, pkt_info->trans_proto);
-			goto out;
-		}
+		found = true;
+		break;
 	}
 
-	/* If we didn't find the flow, we need to add it and try again */
-	if (!flow_node_exists) {
-		flow_node_recycled = rmnet_perf_opt_get_new_flow_index();
-		flow_node_recycled->hash_value = pkt_info->hash_key;
-		rmnet_perf_opt_update_flow(flow_node_recycled, pkt_info);
-		hash_add(rmnet_perf_opt_fht, &flow_node_recycled->list,
+	if (!found) {
+		flow_node = rmnet_perf_opt_get_new_flow_index();
+		flow_node->hash_value = pkt_info->hash_key;
+		rmnet_perf_opt_update_flow(flow_node, pkt_info);
+		hash_add(rmnet_perf_opt_fht, &flow_node->list,
 			 pkt_info->hash_key);
-		goto handle_pkt;
+	}
+
+	flush = rmnet_perf_opt_ip_flag_flush(flow_node, pkt_info);
+
+	/* set this to true by default. Let the protocol helpers change this
+	 * when they merge into an existing flow.
+	 */
+	pkt_info->first_packet = true;
+
+	switch (pkt_info->trans_proto) {
+	case IPPROTO_TCP:
+		rmnet_perf_tcp_opt_ingress(flow_node, pkt_info, flush);
+		handled = true;
+		break;
+	case IPPROTO_UDP:
+		rmnet_perf_udp_opt_ingress(flow_node, pkt_info, flush);
+		handled = true;
+		break;
+	default:
+		pr_err("%s(): Unhandled protocol %u\n",
+		       __func__, pkt_info->trans_proto);
+		break;
 	}
 
 out:
