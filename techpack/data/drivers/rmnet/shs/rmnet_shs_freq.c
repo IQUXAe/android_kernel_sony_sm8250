@@ -29,7 +29,12 @@ struct cpu_freq {
 
 };
 
-unsigned int rmnet_shs_freq_enable __read_mostly = 1;
+/*
+ * Schedutil + WALT already react to modem bursts on Kona reasonably well.
+ * Keep SHS cpufreq forcing available for A/B, but default it off to avoid
+ * redundant policy updates and frequency floor pinning on the RX fast path.
+ */
+unsigned int rmnet_shs_freq_enable __read_mostly = 0;
 module_param(rmnet_shs_freq_enable, uint, 0644);
 MODULE_PARM_DESC(rmnet_shs_freq_enable, "Enable/disable freq boost feature");
 
