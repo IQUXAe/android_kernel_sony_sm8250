@@ -481,7 +481,9 @@ static void adreno_input_event(struct input_handle *handle, unsigned int type,
 		mod_timer(&device->idle_timer,
 			jiffies + device->pwrctrl.interval_timeout);
 	} else if (device->state == KGSL_STATE_SLUMBER) {
-		schedule_work(&adreno_dev->input_work);
+		device->flags |= KGSL_FLAG_WAKE_ON_TOUCH;
+		if (!work_pending(&adreno_dev->input_work))
+			schedule_work(&adreno_dev->input_work);
 	}
 }
 
@@ -1263,7 +1265,16 @@ static int adreno_of_get_power(struct adreno_device *adreno_dev,
 	if (of_property_read_u32(node, "qcom,idle-timeout", &timeout))
 		timeout = 80;
 
+	if (of_machine_is_compatible("somc,pdx206-generic") && timeout > 50)
+		timeout = 50;
+
 	device->pwrctrl.interval_timeout = msecs_to_jiffies(timeout);
+
+	if (of_property_read_u32(node, "qcom,wake-timeout", &timeout))
+		timeout = adreno_wake_timeout;
+	if (of_machine_is_compatible("somc,pdx206-generic") && timeout > 50)
+		timeout = 50;
+	adreno_wake_timeout = timeout;
 
 	device->pwrctrl.bus_control = of_property_read_bool(node,
 		"qcom,bus-control");
@@ -3214,6 +3225,7 @@ int adreno_spin_idle(struct adreno_device *adreno_dev, unsigned int timeout)
 		if (adreno_isidle(KGSL_DEVICE(adreno_dev)))
 			return 0;
 
+		cpu_relax();
 	} while (time_before(jiffies, wait));
 
 	/*
