@@ -806,24 +806,6 @@ static bool binder_worklist_empty_ilocked(struct list_head *list)
 }
 
 /**
- * binder_worklist_empty() - Check if no items on the work list
- * @proc:       binder_proc associated with list
- * @list:	list to check
- *
- * Return: true if there are no items on list, else false
- */
-static bool binder_worklist_empty(struct binder_proc *proc,
-				  struct list_head *list)
-{
-	bool ret;
-
-	binder_inner_proc_lock(proc);
-	ret = binder_worklist_empty_ilocked(list);
-	binder_inner_proc_unlock(proc);
-	return ret;
-}
-
-/**
  * binder_enqueue_work_ilocked() - Add an item to the work list
  * @work:         struct binder_work to add to list
  * @target_list:  list to add work to
@@ -4329,6 +4311,7 @@ static int binder_thread_read(struct binder_proc *proc,
 
 	int ret = 0;
 	int wait_for_proc_work;
+	bool has_thread_work;
 
 	if (*consumed == 0) {
 		if (put_user(BR_NOOP, (uint32_t __user *)ptr))
@@ -4339,13 +4322,14 @@ static int binder_thread_read(struct binder_proc *proc,
 retry:
 	binder_inner_proc_lock(proc);
 	wait_for_proc_work = binder_available_for_proc_work_ilocked(thread);
+	has_thread_work = !binder_worklist_empty_ilocked(&thread->todo);
 	binder_inner_proc_unlock(proc);
 
 	thread->looper |= BINDER_LOOPER_STATE_WAITING;
 
 	trace_binder_wait_for_work(wait_for_proc_work,
 				   !!thread->transaction_stack,
-				   !binder_worklist_empty(proc, &thread->todo));
+				   has_thread_work);
 	if (wait_for_proc_work) {
 		if (!(thread->looper & (BINDER_LOOPER_STATE_REGISTERED |
 					BINDER_LOOPER_STATE_ENTERED))) {
