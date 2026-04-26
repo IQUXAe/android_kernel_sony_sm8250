@@ -10,7 +10,21 @@
 
 #ifdef STATIC
 #define PREBOOT
-#include "lz4/lz4_decompress.c"
+#include <linux/string.h>
+#include <asm/unaligned.h>
+#define LZ4_FREESTANDING 1
+#define LZ4_MEMORY_USAGE 10
+#define LZ4_HEAPMODE 0
+#define LZ4_memcpy(dst, src, size) __builtin_memcpy(dst, src, size)
+#define LZ4_memmove(dst, src, size) __builtin_memmove(dst, src, size)
+#define LZ4_memset(dst, value, size) memset(dst, value, size)
+#define LZ4_STATIC_LINKING_ONLY
+#define LZ4_STATIC_LINKING_ONLY_DISABLE_MEMORY_ALLOCATION 1
+#define LZ4_DISABLE_DEPRECATE_WARNINGS
+#ifdef current
+#undef current
+#endif
+#include "lz4/lz4.c"
 #else
 #include <linux/decompress/unlz4.h>
 #endif
@@ -18,8 +32,11 @@
 #include <linux/lz4.h>
 #include <linux/decompress/mm.h>
 #include <linux/compiler.h>
+#include <linux/unaligned/le_struct.h>
 
+#ifndef STATIC
 #include <asm/unaligned.h>
+#endif
 
 /*
  * Note: Uncompressed chunk size is used in the compressor side
