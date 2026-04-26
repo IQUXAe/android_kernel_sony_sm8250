@@ -248,15 +248,16 @@ static int dsi_ctrl_debugfs_init(struct dsi_ctrl *dsi_ctrl,
 						dsi_ctrl->cell_index);
 	sde_dbg_reg_register_base(dbg_name, dsi_ctrl->hw.base,
 				msm_iomap_size(dsi_ctrl->pdev, "dsi_ctrl"));
+	return 0;
 error_remove_dir:
-	debugfs_remove(dir);
+	debugfs_remove_recursive(dir);
 error:
 	return rc;
 }
 
 static int dsi_ctrl_debugfs_deinit(struct dsi_ctrl *dsi_ctrl)
 {
-	debugfs_remove(dsi_ctrl->debugfs_root);
+	debugfs_remove_recursive(dsi_ctrl->debugfs_root);
 	return 0;
 }
 #else

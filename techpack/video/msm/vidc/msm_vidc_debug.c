@@ -251,7 +251,7 @@ struct dentry *msm_vidc_debugfs_init_drv(void)
 
 failed_create_dir:
 	if (dir)
-		debugfs_remove_recursive(vidc_driver->debugfs_root);
+		debugfs_remove_recursive(dir);
 
 	return NULL;
 }
@@ -288,7 +288,12 @@ struct dentry *msm_vidc_debugfs_init_core(struct msm_vidc_core *core,
 		d_vpr_e("debugfs_create_file: fail\n");
 		goto failed_create_dir;
 	}
+	return dir;
 failed_create_dir:
+	if (dir) {
+		debugfs_remove_recursive(dir);
+		dir = NULL;
+	}
 	return dir;
 }
 
@@ -689,4 +694,3 @@ inline void update_log_ctxt(u32 sid, u32 session_type, u32 fourcc)
 	vidc_driver->ctxt[sid-1].name[4] = type;
 	vidc_driver->ctxt[sid-1].name[5] = '\0';
 }
-

@@ -1688,7 +1688,7 @@ static int dsi_display_debugfs_init(struct dsi_display *display)
 
 	return rc;
 error_remove_dir:
-	debugfs_remove(dir);
+	debugfs_remove_recursive(dir);
 error:
 	return rc;
 }
