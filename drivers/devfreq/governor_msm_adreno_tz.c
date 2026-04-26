@@ -442,12 +442,35 @@ static int __secure_tz_update_entry3(unsigned int *scm_data, u32 size_scm_data,
 	return ret;
 }
 
-static void tz_init_gpuloadinfos(void)
+static int tz_init_gpuloadinfos(void)
 {
+	if (gpu_load_infos)
+		return 0;
+
 	gpu_load_infos = kzalloc(sizeof(struct gpu_load_queue), GFP_KERNEL);
+	if (!gpu_load_infos)
+		return -ENOMEM;
+
 	gpu_load_infos->head = gpu_load_infos->tail = 0;
 	gpu_load_infos->gpu_load =
 		kcalloc(NMAX, sizeof(struct gpu_load_data), GFP_KERNEL);
+	if (!gpu_load_infos->gpu_load) {
+		kfree(gpu_load_infos);
+		gpu_load_infos = NULL;
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+static void tz_release_gpuloadinfos(void)
+{
+	if (!gpu_load_infos)
+		return;
+
+	kfree(gpu_load_infos->gpu_load);
+	kfree(gpu_load_infos);
+	gpu_load_infos = NULL;
 }
 
 static int tz_init_ca(struct devfreq_msm_adreno_tz_data *priv)
@@ -502,7 +525,10 @@ static int tz_init(struct devfreq_msm_adreno_tz_data *priv,
 {
 	int ret;
 
-	tz_init_gpuloadinfos();
+	ret = tz_init_gpuloadinfos();
+	if (ret)
+		return ret;
+
 	/* Make sure all CMD IDs are avaialble */
 	if (scm_is_call_available(SCM_SVC_DCVS, TZ_INIT_ID_64) &&
 			scm_is_call_available(SCM_SVC_DCVS, TZ_UPDATE_ID_64) &&
@@ -608,16 +634,19 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 	if (stats->private_data)
 		context_count =  *((int *)stats->private_data);
 
-	/* Update the GPU load statistics */
-	compute_work_load(stats, priv, devfreq);
 	/*
 	 * Do not waste CPU cycles running this algorithm if
 	 * the GPU just started, or if less than FLOOR time
 	 * has passed since the last run or the gpu hasn't been
 	 * busier than MIN_BUSY.
 	 */
-	if ((stats->total_time == 0) ||
-		(priv->bin.total_time < FLOOR) ||
+	if (stats->total_time == 0)
+		return 0;
+
+	/* Update the GPU load statistics */
+	compute_work_load(stats, priv, devfreq);
+
+	if ((priv->bin.total_time < FLOOR) ||
 		(unsigned int) priv->bin.busy_time < MIN_BUSY) {
 		return 0;
 	}
@@ -738,6 +767,7 @@ static int tz_start(struct devfreq *devfreq)
 				sizeof(version));
 	if (ret != 0 || version > MAX_TZ_VERSION) {
 		pr_err(TAG "tz_init failed\n");
+		tz_release_gpuloadinfos();
 		partner_gpu_profile = NULL;
 		return ret;
 	}
@@ -759,6 +789,7 @@ static int tz_stop(struct devfreq *devfreq)
 		device_remove_file(&devfreq->dev, adreno_tz_attr_list[i]);
 
 	flush_workqueue(workqueue);
+	tz_release_gpuloadinfos();
 
 	/* leaving the governor and cleaning the pointer to private data */
 	devfreq->data = NULL;

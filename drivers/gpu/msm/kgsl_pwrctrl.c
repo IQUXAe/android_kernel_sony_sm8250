@@ -8,6 +8,7 @@
 #include <linux/msm-bus-board.h>
 #include <linux/msm_kgsl.h>
 #include <linux/of_device.h>
+#include <linux/of_fdt.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
@@ -2277,7 +2278,8 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	if (pwr->grp_clks[0] == NULL)
 		pwr->grp_clks[0] = pwr->grp_clks[1];
 
-	if (of_property_read_bool(pdev->dev.of_node, "qcom,no-nap"))
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,no-nap") &&
+			!of_machine_is_compatible("somc,pdx206-generic"))
 		device->pwrctrl.ctrl_flags |= BIT(KGSL_PWRFLAGS_NAP_OFF);
 
 	if (pwr->num_pwrlevels == 0) {
