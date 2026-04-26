@@ -119,8 +119,11 @@ static inline void ksu_handle_execveat_init(struct filename **filename_ptr)
 		else if (likely(strstr(filename->name, "/app_process") == NULL &&
 				strstr(filename->name, "/adbd") == NULL) &&
 				!susfs_is_current_proc_umounted()) {
-					pr_info("susfs: mark no sucompat checks for pid: '%d', exec: '%s'\n", current->pid, filename->name);
-					susfs_set_current_proc_umounted();
+#ifdef CONFIG_KSU_DEBUG
+			pr_info("susfs: mark no sucompat checks for pid: '%d', exec: '%s'\n",
+				current->pid, filename->name);
+#endif
+			susfs_set_current_proc_umounted();
 		}
 #endif
 	}
@@ -145,12 +148,16 @@ static int ksu_sucompat_user_common(const char __user **filename_user,
 
 	if (escalate) {
 		write_sulog('x');
+#ifdef CONFIG_KSU_DEBUG
 		pr_info("%s su found\n", syscall_name);
+#endif
 		*filename_user = ksud_user_path();
 		escape_with_root_profile(); // escalate !!
 	} else {
 		write_sulog('$');
+#ifdef CONFIG_KSU_DEBUG
 		pr_info("%s su->sh!\n", syscall_name);
+#endif
 		*filename_user = sh_user_path();
 	}
 
@@ -171,7 +178,9 @@ static int do_execve_sucompat_for_kp(const char __user **filename_user)
 	if (likely(memcmp(path, su_path, sizeof(su_path))))
 		return 0;
 
+#ifdef CONFIG_KSU_DEBUG
 	pr_info("sys_execve su found\n");
+#endif
 	*filename_user = ksud_user_path();
 
 	escape_with_root_profile();
@@ -221,7 +230,9 @@ int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 	if (likely(memcmp(filename->name, su_path, sizeof(su_path))))
 		return 0;
 
+#ifdef CONFIG_KSU_DEBUG
 	pr_info("do_execveat_common su found\n");
+#endif
 	memcpy((void *)filename->name, ksud_path, sizeof(ksud_path));
 
 	escape_with_root_profile();
@@ -264,7 +275,9 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
 		return 0;
 
 	write_sulog('x');
+#ifdef CONFIG_KSU_DEBUG
 	pr_info("ksu_handle_execve_sucompat: su found\n");
+#endif
 	*filename_user = ksud_user_path();
 
 	escape_with_root_profile();
@@ -295,7 +308,9 @@ int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 		return 0;
 
 	write_sulog('x');
+#ifdef CONFIG_KSU_DEBUG
 	pr_info("ksu_handle_execveat_sucompat: su found\n");
+#endif
 	memcpy((void *)filename->name, ksud_path, sizeof(ksud_path));
 
 	escape_with_root_profile();
@@ -320,7 +335,9 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 	ksu_strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
 	if (unlikely(!memcmp(path, su_path, sizeof(su_path)))) {
+#ifdef CONFIG_KSU_DEBUG
 		pr_info("ksu_handle_faccessat: su->sh!\n");
+#endif
 		*filename_user = sh_user_path();
 	}
 
@@ -338,7 +355,9 @@ int ksu_handle_stat(int *dfd, struct filename **filename, int *flags)
 		return 0;
 	}
 
+#ifdef CONFIG_KSU_DEBUG
 	pr_info("ksu_handle_stat: su->sh!\n");
+#endif
 	memcpy((void *)((*filename)->name), sh_path, sizeof(sh_path));
 	return 0;
 }
@@ -354,7 +373,9 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 	ksu_strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
 	if (unlikely(!memcmp(path, su_path, sizeof(su_path)))) {
+#ifdef CONFIG_KSU_DEBUG
 		pr_info("ksu_handle_stat: su->sh!\n");
+#endif
 		*filename_user = sh_user_path();
 	}
 

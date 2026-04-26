@@ -24,7 +24,7 @@ extern void ksu_try_umount(const char *mnt, bool check_mnt, int flags, uid_t uid
 #endif
 
 #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
-bool susfs_is_log_enabled __read_mostly = true;
+bool susfs_is_log_enabled __read_mostly;
 #define SUSFS_LOGI(fmt, ...) if (susfs_is_log_enabled) pr_info("susfs:[%u][%d][%s] " fmt, current_uid().val, current->pid, __func__, ##__VA_ARGS__)
 #define SUSFS_LOGE(fmt, ...) if (susfs_is_log_enabled) pr_err("susfs:[%u][%d][%s]" fmt, current_uid().val, current->pid, __func__, ##__VA_ARGS__)
 #else
@@ -1023,6 +1023,9 @@ void susfs_get_enabled_features(void __user *arg) {
 #endif
 #ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
 	features |= BIT(8);
+#endif
+#ifdef CONFIG_KSU_SUSFS_SUS_SU
+	features |= BIT(9);
 #endif
 	if (copy_to_user(arg, &features, sizeof(features)))
 		SUSFS_LOGE("susfs_get_enabled_features: copy_to_user failed\n");

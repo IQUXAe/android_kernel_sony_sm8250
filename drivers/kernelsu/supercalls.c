@@ -43,6 +43,14 @@
 #include "manual_su.h"
 #endif
 
+#ifdef CONFIG_KSU_SUSFS_SUS_SU
+static void susfs_copy_int_result(void __user *arg, int value, const char *name)
+{
+	if (copy_to_user(arg, &value, sizeof(value)))
+		pr_err("susfs: copy %s result failed\n", name);
+}
+#endif
+
 bool ksu_uid_scanner_enabled = false;
 
 // Permission check functions
@@ -469,7 +477,9 @@ static int do_manage_mark(void __user *arg)
 		} else {
 			ret = 1; // SYSCALL_TRACEPOINT is flagged
 		}
+#ifdef CONFIG_KSU_DEBUG
 		pr_info("manage_mark: ret for pid %d: %d\n", cmd.pid, ret);
+#endif
 		cmd.result = (u32)ret;
 		break;
 #endif // #ifndef CONFIG_KSU_SUSFS
@@ -517,7 +527,9 @@ static int do_manage_mark(void __user *arg)
 		ksu_mark_running_process();
 		pr_info("manage_mark: refreshed running processes\n");
 #else
+#ifdef CONFIG_KSU_DEBUG
 		pr_info("susfs: cmd: KSU_MARK_REFRESH: do nothing\n");
+#endif
 #endif // #ifndef CONFIG_KSU_SUSFS
 		break;
 	}
@@ -1064,6 +1076,10 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 		}
 #endif //#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+		if (cmd == CMD_SUSFS_ADD_SUS_MOUNT) {
+			susfs_add_sus_mount(argp);
+			return 0;
+		}
 		if (cmd == CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS) {
 			susfs_set_hide_sus_mnts_for_non_su_procs(argp);
 			return 0;
@@ -1113,6 +1129,32 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 			return 0;
 		}
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+		if (cmd == CMD_SUSFS_ADD_TRY_UMOUNT) {
+			susfs_add_try_umount(argp);
+			return 0;
+		}
+		if (cmd == CMD_SUSFS_RUN_UMOUNT_FOR_CURRENT_MNT_NS) {
+			susfs_run_try_umount_for_current_mnt_ns();
+			return 0;
+		}
+#endif // #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+#ifdef CONFIG_KSU_SUSFS_SUS_SU
+		if (cmd == CMD_SUSFS_SHOW_SUS_SU_WORKING_MODE) {
+			susfs_copy_int_result(argp,
+					      susfs_get_sus_su_working_mode(),
+					      "sus_su working mode");
+			return 0;
+		}
+		if (cmd == CMD_SUSFS_IS_SUS_SU_READY) {
+			susfs_copy_int_result(argp, 1, "sus_su ready");
+			return 0;
+		}
+		if (cmd == CMD_SUSFS_SUS_SU) {
+			susfs_sus_su(argp);
+			return 0;
+		}
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_SU
 		if (cmd == CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING) {
 			susfs_set_avc_log_spoofing(argp);
 			return 0;
