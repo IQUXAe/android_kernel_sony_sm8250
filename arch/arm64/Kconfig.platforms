@@ -157,7 +157,7 @@ config ARCH_KONA
 	select COMMON_CLK_QCOM
 	help
 	  This enables support for the KONA chipset. If you do not
-	  wish to build a kernel that runs on this chipset, say 'N' here.\
+	  wish to build a kernel that runs on this chipset, say 'N' here.
 
 config ARCH_SONY_EDO
 	bool "Sony Mobile Edo platform"
@@ -165,15 +165,6 @@ config ARCH_SONY_EDO
 	help
 	Support for the SONY Mobile Edo platform
 	which is based on QCOM KONA chipset.
-	If you enable this config,
-	please use SONY Mobile device tree.
-
-config MACH_SONY_EDO_CDB
-	bool "Sony Mobile Edo CDB"
-	depends on ARCH_SONY_EDO
-	help
-	Support for the SONY Mobile Edo CDB board
-	which is based on SONY Edo platform.
 	If you enable this config,
 	please use SONY Mobile device tree.
 
@@ -186,38 +177,11 @@ config MACH_SONY_PDX203
 	If you enable this config,
 	please use SONY Mobile device tree.
 
-config MACH_SONY_PDX203_J
-	bool "Sony Mobile PDX-203 J"
-	depends on ARCH_SONY_EDO
-	help
-	Support for the SONY Mobile PDX-203 J device
-	which is based on SONY Edo platform.
-	If you enable this config,
-	please use SONY Mobile device tree.
-
-config MACH_SONY_PDX204
-	bool "Sony Mobile PDX-204"
-	depends on ARCH_SONY_EDO
-	help
-	Support for the SONY Mobile PDX-204 device
-	which is based on SONY Edo platform.
-	If you enable this config,
-	please use SONY Mobile device tree.
-
 config MACH_SONY_PDX206
 	bool "Sony Mobile PDX-206"
 	depends on ARCH_SONY_EDO
 	help
 	Support for the SONY Mobile PDX-206 device
-	which is based on SONY Edo platform.
-	If you enable this config,
-	please use SONY Mobile device tree.
-
-config MACH_SONY_PDX206_J
-	bool "Sony Mobile PDX-206 J"
-	depends on ARCH_SONY_EDO
-	help
-	Support for the SONY Mobile PDX-206 J device
 	which is based on SONY Edo platform.
 	If you enable this config,
 	please use SONY Mobile device tree.
