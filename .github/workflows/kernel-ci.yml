@@ -1,0 +1,111 @@
+name: Kernel CI
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: Device to build
+        required: true
+        default: pdx206
+        type: choice
+        options:
+          - pdx206
+          - pdx203
+          - both
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kernel-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-pdx206:
+    name: Build pdx206
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'push' || github.event.inputs.device == 'pdx206' || github.event.inputs.device == 'both'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential cpio flex libelf-dev libssl-dev pahole python3 tar zstd
+
+      - name: Download NDK clang
+        run: |
+          TOOLCHAIN_ROOT="${RUNNER_TEMP}/toolchains"
+          mkdir -p "${TOOLCHAIN_ROOT}"
+          curl -L --retry 5 --retry-delay 5 \
+            -o "${TOOLCHAIN_ROOT}/clang-linux-x86-ndk-r29-r563880c.tar.zst" \
+            "https://github.com/Ylarod/setup-ndk-clang/releases/download/prebuilt/clang-linux-x86-ndk-r29-r563880c.tar.zst"
+          tar --zstd -xf "${TOOLCHAIN_ROOT}/clang-linux-x86-ndk-r29-r563880c.tar.zst" -C "${TOOLCHAIN_ROOT}"
+          CLANG_BIN_DIR="$(find "${TOOLCHAIN_ROOT}" -type f -path '*/bin/clang' | head -n 1)"
+          if [ -z "${CLANG_BIN_DIR}" ]; then
+            echo "Unable to find clang in extracted toolchain" >&2
+            exit 1
+          fi
+          CLANG_DIR="$(dirname "$(dirname "${CLANG_BIN_DIR}")")"
+          echo "CLANG_DIR=${CLANG_DIR}" >> "${GITHUB_ENV}"
+          "${CLANG_DIR}/bin/clang" --version
+          "${CLANG_DIR}/bin/ld.lld" --version
+
+      - name: Build kernel
+        run: |
+          chmod +x .github/scripts/build-kernel.sh
+          .github/scripts/build-kernel.sh pdx206
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdx206-kernel
+          path: artifacts/pdx206
+          if-no-files-found: error
+          retention-days: 7
+
+  build-pdx203:
+    name: Build pdx203
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.device == 'pdx203' || github.event.inputs.device == 'both')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential cpio flex libelf-dev libssl-dev pahole python3 tar zstd
+
+      - name: Download NDK clang
+        run: |
+          TOOLCHAIN_ROOT="${RUNNER_TEMP}/toolchains"
+          mkdir -p "${TOOLCHAIN_ROOT}"
+          curl -L --retry 5 --retry-delay 5 \
+            -o "${TOOLCHAIN_ROOT}/clang-linux-x86-ndk-r29-r563880c.tar.zst" \
+            "https://github.com/Ylarod/setup-ndk-clang/releases/download/prebuilt/clang-linux-x86-ndk-r29-r563880c.tar.zst"
+          tar --zstd -xf "${TOOLCHAIN_ROOT}/clang-linux-x86-ndk-r29-r563880c.tar.zst" -C "${TOOLCHAIN_ROOT}"
+          CLANG_BIN_DIR="$(find "${TOOLCHAIN_ROOT}" -type f -path '*/bin/clang' | head -n 1)"
+          if [ -z "${CLANG_BIN_DIR}" ]; then
+            echo "Unable to find clang in extracted toolchain" >&2
+            exit 1
+          fi
+          CLANG_DIR="$(dirname "$(dirname "${CLANG_BIN_DIR}")")"
+          echo "CLANG_DIR=${CLANG_DIR}" >> "${GITHUB_ENV}"
+          "${CLANG_DIR}/bin/clang" --version
+          "${CLANG_DIR}/bin/ld.lld" --version
+
+      - name: Build kernel
+        run: |
+          chmod +x .github/scripts/build-kernel.sh
+          .github/scripts/build-kernel.sh pdx203
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdx203-kernel
+          path: artifacts/pdx203
+          if-no-files-found: error
+          retention-days: 7
