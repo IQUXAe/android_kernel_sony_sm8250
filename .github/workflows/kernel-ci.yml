@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential cpio flex libelf-dev libssl-dev pahole python3 tar zstd
+          sudo apt-get install -y bc bison build-essential cpio flex libelf-dev libssl-dev pahole python3 tar zip zstd
 
       - name: Download NDK clang
         run: |
@@ -58,18 +58,26 @@ jobs:
           chmod +x .github/scripts/build-kernel.sh
           .github/scripts/build-kernel.sh pdx206
 
+      - name: Package AnyKernel3 zip
+        env:
+          ANYKERNEL_REPO: https://github.com/osm0sis/AnyKernel3
+          ANYKERNEL_BRANCH: master
+        run: |
+          chmod +x .github/scripts/package-anykernel.sh
+          .github/scripts/package-anykernel.sh pdx206
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pdx206-kernel
-          path: artifacts/pdx206
+          name: pdx206-anykernel
+          path: artifacts/AnyKernel3-pdx206-*
           if-no-files-found: error
           retention-days: 7
 
   build-pdx203:
     name: Build pdx203
     runs-on: ubuntu-24.04
-    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.device == 'pdx203' || github.event.inputs.device == 'both')
+    if: github.event_name == 'push' || github.event.inputs.device == 'pdx203' || github.event.inputs.device == 'both'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,7 +85,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential cpio flex libelf-dev libssl-dev pahole python3 tar zstd
+          sudo apt-get install -y bc bison build-essential cpio flex libelf-dev libssl-dev pahole python3 tar zip zstd
 
       - name: Download NDK clang
         run: |
@@ -102,10 +110,18 @@ jobs:
           chmod +x .github/scripts/build-kernel.sh
           .github/scripts/build-kernel.sh pdx203
 
+      - name: Package AnyKernel3 zip
+        env:
+          ANYKERNEL_REPO: https://github.com/osm0sis/AnyKernel3
+          ANYKERNEL_BRANCH: master
+        run: |
+          chmod +x .github/scripts/package-anykernel.sh
+          .github/scripts/package-anykernel.sh pdx203
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pdx203-kernel
-          path: artifacts/pdx203
+          name: pdx203-anykernel
+          path: artifacts/AnyKernel3-pdx203-*
           if-no-files-found: error
           retention-days: 7

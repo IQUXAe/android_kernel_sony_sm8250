@@ -15,7 +15,7 @@ esac
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUT_DIR="${ROOT_DIR}/out/${DEVICE}"
-ARTIFACT_DIR="${ROOT_DIR}/artifacts/${DEVICE}"
+BUILD_DIR="${ROOT_DIR}/build/${DEVICE}"
 CLANG_DIR="${CLANG_DIR:?CLANG_DIR is not set}"
 JOBS="${JOBS:-$(nproc)}"
 DIFFCONFIG="${DEVICE}_diffconfig"
@@ -49,8 +49,8 @@ export STRIP=llvm-strip
 clang --version
 ld.lld --version
 
-rm -rf "${OUT_DIR}" "${ARTIFACT_DIR}"
-mkdir -p "${OUT_DIR}" "${ARTIFACT_DIR}"
+rm -rf "${OUT_DIR}" "${BUILD_DIR}"
+mkdir -p "${OUT_DIR}" "${BUILD_DIR}"
 
 make O="${OUT_DIR}" KBUILD_DIFFCONFIG="${DIFFCONFIG}" vendor/kona-perf_defconfig
 
@@ -59,22 +59,8 @@ if ! grep -q "^CONFIG_MACH_SONY_${DEVICE^^}=y$" "${OUT_DIR}/.config"; then
   exit 1
 fi
 
-make -j"${JOBS}" O="${OUT_DIR}" Image modules dtbs
+make -j"${JOBS}" O="${OUT_DIR}" Image dtbs
 
-cp "${OUT_DIR}/.config" "${ARTIFACT_DIR}/"
-cp "${OUT_DIR}/arch/arm64/boot/Image" "${ARTIFACT_DIR}/Image"
-
-for base_dtb in kona.dtb kona-v2.dtb kona-v2.1.dtb; do
-  cp "${OUT_DIR}/arch/arm64/boot/dts/vendor/qcom/${base_dtb}" "${ARTIFACT_DIR}/"
-done
-
-cp "${OUT_DIR}/arch/arm64/boot/dts/vendor/somc/kona-edo-${DEVICE}_generic-overlay.dtbo" "${ARTIFACT_DIR}/"
-
-if compgen -G "${OUT_DIR}/lib/modules/*/modules.order" > /dev/null; then
-  MODULES_STAGING="${OUT_DIR}/modules-staging"
-  rm -rf "${MODULES_STAGING}"
-  make O="${OUT_DIR}" INSTALL_MOD_PATH="${MODULES_STAGING}" modules_install
-  tar -C "${MODULES_STAGING}" -caf "${ARTIFACT_DIR}/modules.tar.zst" .
-fi
-
-(cd "${ARTIFACT_DIR}" && sha256sum ./* > sha256sums.txt)
+cp "${OUT_DIR}/.config" "${BUILD_DIR}/"
+cp "${OUT_DIR}/arch/arm64/boot/Image" "${BUILD_DIR}/Image"
+cp "${OUT_DIR}/arch/arm64/boot/dts/vendor/somc/kona-edo-${DEVICE}_generic-overlay.dtbo" "${BUILD_DIR}/"
