@@ -10,6 +10,11 @@
 # Normal rules (sorted alphabetically)
 #
 .*
+!.github/
+!.github/scripts/
+!.github/scripts/*.sh
+!.github/workflows/
+!.github/workflows/*.yml
 *.a
 *.asn1.[ch]
 *.bin

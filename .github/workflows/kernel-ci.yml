@@ -17,6 +17,12 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  KPATCH_SUPERKEY: "edo_pdx203_206_123"
+  KPTOOLS_URL: https://github.com/bmax121/KernelPatch/releases/latest/download/kptools-linux
+  KPIMG_URL: https://github.com/bmax121/KernelPatch/releases/latest/download/kpimg-android
+
 concurrency:
   group: kernel-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -58,13 +64,36 @@ jobs:
           chmod +x .github/scripts/build-kernel.sh
           .github/scripts/build-kernel.sh pdx206
 
-      - name: Package AnyKernel3 zip
+      - name: Download KernelPatch tools
+        run: |
+          KPATCH_DIR="${RUNNER_TEMP}/kernelpatch"
+          mkdir -p "${KPATCH_DIR}"
+          curl -L --retry 5 --retry-delay 5 -o "${KPATCH_DIR}/kptools-linux" "${KPTOOLS_URL}"
+          curl -L --retry 5 --retry-delay 5 -o "${KPATCH_DIR}/kpimg-android" "${KPIMG_URL}"
+          chmod 755 "${KPATCH_DIR}/kptools-linux"
+          echo "KPTOOLS_BIN=${KPATCH_DIR}/kptools-linux" >> "${GITHUB_ENV}"
+          echo "KPIMG_PATH=${KPATCH_DIR}/kpimg-android" >> "${GITHUB_ENV}"
+
+      - name: Patch kernel with KernelPatch
+        run: |
+          chmod +x .github/scripts/patch-kernelpatch.sh
+          .github/scripts/patch-kernelpatch.sh pdx206
+
+      - name: Package stock AnyKernel3 zip
         env:
           ANYKERNEL_REPO: https://github.com/osm0sis/AnyKernel3
           ANYKERNEL_BRANCH: master
         run: |
           chmod +x .github/scripts/package-anykernel.sh
           .github/scripts/package-anykernel.sh pdx206
+
+      - name: Package KernelPatch AnyKernel3 zip
+        env:
+          ANYKERNEL_REPO: https://github.com/osm0sis/AnyKernel3
+          ANYKERNEL_BRANCH: master
+        run: |
+          chmod +x .github/scripts/package-anykernel.sh
+          .github/scripts/package-anykernel.sh pdx206 build/pdx206/Image-kpatch kpatch
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -110,13 +139,36 @@ jobs:
           chmod +x .github/scripts/build-kernel.sh
           .github/scripts/build-kernel.sh pdx203
 
-      - name: Package AnyKernel3 zip
+      - name: Download KernelPatch tools
+        run: |
+          KPATCH_DIR="${RUNNER_TEMP}/kernelpatch"
+          mkdir -p "${KPATCH_DIR}"
+          curl -L --retry 5 --retry-delay 5 -o "${KPATCH_DIR}/kptools-linux" "${KPTOOLS_URL}"
+          curl -L --retry 5 --retry-delay 5 -o "${KPATCH_DIR}/kpimg-android" "${KPIMG_URL}"
+          chmod 755 "${KPATCH_DIR}/kptools-linux"
+          echo "KPTOOLS_BIN=${KPATCH_DIR}/kptools-linux" >> "${GITHUB_ENV}"
+          echo "KPIMG_PATH=${KPATCH_DIR}/kpimg-android" >> "${GITHUB_ENV}"
+
+      - name: Patch kernel with KernelPatch
+        run: |
+          chmod +x .github/scripts/patch-kernelpatch.sh
+          .github/scripts/patch-kernelpatch.sh pdx203
+
+      - name: Package stock AnyKernel3 zip
         env:
           ANYKERNEL_REPO: https://github.com/osm0sis/AnyKernel3
           ANYKERNEL_BRANCH: master
         run: |
           chmod +x .github/scripts/package-anykernel.sh
           .github/scripts/package-anykernel.sh pdx203
+
+      - name: Package KernelPatch AnyKernel3 zip
+        env:
+          ANYKERNEL_REPO: https://github.com/osm0sis/AnyKernel3
+          ANYKERNEL_BRANCH: master
+        run: |
+          chmod +x .github/scripts/package-anykernel.sh
+          .github/scripts/package-anykernel.sh pdx203 build/pdx203/Image-kpatch kpatch
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
