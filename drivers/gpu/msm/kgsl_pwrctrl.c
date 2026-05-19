@@ -8,7 +8,6 @@
 #include <linux/msm-bus-board.h>
 #include <linux/msm_kgsl.h>
 #include <linux/of_device.h>
-#include <linux/of_fdt.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>

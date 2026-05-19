@@ -35,17 +35,17 @@ bool zcomp_available_algorithm(const char *comp);
 struct zcomp *zcomp_create(const char *comp);
 void zcomp_destroy(struct zcomp *comp);
 
-static __always_inline struct zcomp_strm *zcomp_stream_get(struct zcomp *comp)
+static inline struct zcomp_strm *zcomp_stream_get(struct zcomp *comp)
 {
 	return *get_cpu_ptr(comp->stream);
 }
 
-static __always_inline void zcomp_stream_put(struct zcomp *comp)
+static inline void zcomp_stream_put(struct zcomp *comp)
 {
 	put_cpu_ptr(comp->stream);
 }
 
-static __always_inline int zcomp_compress(struct zcomp_strm *zstrm,
+static inline int zcomp_compress(struct zcomp_strm *zstrm,
 		const void *src, unsigned int *dst_len)
 {
 	/*
@@ -69,7 +69,7 @@ static __always_inline int zcomp_compress(struct zcomp_strm *zstrm,
 			zstrm->buffer, dst_len);
 }
 
-static __always_inline int zcomp_decompress(struct zcomp_strm *zstrm,
+static inline int zcomp_decompress(struct zcomp_strm *zstrm,
 		const void *src, unsigned int src_len, void *dst)
 {
 	unsigned int dst_len = PAGE_SIZE;
