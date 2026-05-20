@@ -463,6 +463,7 @@ static int fts_input_report_b(struct fts_ts_data *data)
 			touchs |= BIT(events[i].id);
 			data->touchs |= BIT(events[i].id);
 
+#if FTS_DEBUG_EN
 			if ((data->log_level >= 2) ||
 				((1 == data->log_level) && (FTS_TOUCH_DOWN == events[i].flag))) {
 				FTS_DEBUG("[B]P%d(%d, %d)[p:%d,tm:%d] DOWN!",
@@ -470,22 +471,27 @@ static int fts_input_report_b(struct fts_ts_data *data)
 					events[i].x, events[i].y,
 					events[i].p, events[i].area);
 			}
+#endif
 		} else {
 			uppoint++;
 			input_mt_report_slot_state(data->input_dev, MT_TOOL_FINGER, false);
 			data->touchs &= ~BIT(events[i].id);
+#if FTS_DEBUG_EN
 			if (data->log_level >= 1) {
 				FTS_DEBUG("[B]P%d UP!", events[i].id);
 			}
+#endif
 		}
 	}
 
 	if (unlikely(data->touchs ^ touchs)) {
 		for (i = 0; i < max_touch_num; i++)  {
 			if (BIT(i) & (data->touchs ^ touchs)) {
+#if FTS_DEBUG_EN
 				if (data->log_level >= 1) {
 					FTS_DEBUG("[B]P%d UP!", i);
 				}
+#endif
 			va_reported = true;
 			input_mt_slot(data->input_dev, i);
 			input_mt_report_slot_state(data->input_dev, MT_TOOL_FINGER, false);
@@ -497,9 +503,11 @@ static int fts_input_report_b(struct fts_ts_data *data)
 	if (va_reported) {
 		/* touchs==0, there's no point but key */
 		if (EVENT_NO_DOWN(data) || (!touchs)) {
+#if FTS_DEBUG_EN
 			if (data->log_level >= 1) {
 				FTS_DEBUG("[B]Points All Up!");
 			}
+#endif
 			input_report_key(data->input_dev, BTN_TOUCH, 0);
 		} else {
 			input_report_key(data->input_dev, BTN_TOUCH, 1);
@@ -542,6 +550,7 @@ static int fts_input_report_a(struct fts_ts_data *data)
 
 			input_mt_sync(data->input_dev);
 
+#if FTS_DEBUG_EN
 			if ((data->log_level >= 2) ||
 				((1 == data->log_level) && (FTS_TOUCH_DOWN == events[i].flag))) {
 				FTS_DEBUG("[A]P%d(%d, %d)[p:%d,tm:%d] DOWN!",
@@ -549,6 +558,7 @@ static int fts_input_report_a(struct fts_ts_data *data)
 					events[i].x, events[i].y,
 					events[i].p, events[i].area);
 			}
+#endif
 			touchs++;
 		}
 	}
@@ -561,9 +571,11 @@ static int fts_input_report_a(struct fts_ts_data *data)
 
 	if (va_reported) {
 		if (EVENT_NO_DOWN(data)) {
+#if FTS_DEBUG_EN
 			if (data->log_level >= 1) {
 				FTS_DEBUG("[A]Points All Up!");
 			}
+#endif
 			input_report_key(data->input_dev, BTN_TOUCH, 0);
 			input_mt_sync(data->input_dev);
 		} else {
@@ -653,7 +665,7 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		events[i].y = ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 8) +
 				(buf[FTS_TOUCH_Y_L_POS + base] & 0xFF);
 		events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
-		events[i].id = buf[FTS_TOUCH_ID_POS + base] >> 4;
+		events[i].id = pointid;
 		events[i].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
 		events[i].p =  buf[FTS_TOUCH_PRE_POS + base];
 
