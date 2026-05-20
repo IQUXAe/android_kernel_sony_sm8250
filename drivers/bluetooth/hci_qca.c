@@ -191,7 +191,7 @@ static void serial_clock_vote(unsigned long vote, struct hci_uart *hu)
 	struct qca_data *qca = hu->priv;
 	unsigned int diff;
 
-	bool old_vote = (qca->tx_vote | qca->rx_vote);
+	bool old_vote = (qca->tx_vote || qca->rx_vote);
 	bool new_vote;
 
 	switch (vote) {
@@ -219,13 +219,13 @@ static void serial_clock_vote(unsigned long vote, struct hci_uart *hu)
 	case HCI_IBS_TX_VOTE_CLOCK_OFF:
 		qca->tx_vote = false;
 		qca->tx_votes_off++;
-		new_vote = qca->rx_vote | qca->tx_vote;
+		new_vote = qca->rx_vote || qca->tx_vote;
 		break;
 
 	case HCI_IBS_RX_VOTE_CLOCK_OFF:
 		qca->rx_vote = false;
 		qca->rx_votes_off++;
-		new_vote = qca->rx_vote | qca->tx_vote;
+		new_vote = qca->rx_vote || qca->tx_vote;
 		break;
 
 	default:
