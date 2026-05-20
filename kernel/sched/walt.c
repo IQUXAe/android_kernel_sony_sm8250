@@ -199,8 +199,11 @@ static int __init set_sched_predl(char *str)
 }
 early_param("sched_predl", set_sched_predl);
 
+#include <linux/reciprocal_div.h>
+
 __read_mostly unsigned int walt_scale_demand_divisor;
-#define scale_demand(d) ((d)/walt_scale_demand_divisor)
+struct reciprocal_value walt_scale_demand_reciprocal;
+#define scale_demand(d) reciprocal_divide((u32)(d), walt_scale_demand_reciprocal)
 
 static inline void walt_irq_work_queue(struct irq_work *work)
 {
@@ -1793,6 +1796,13 @@ account_busy_for_task_demand(struct rq *rq, struct task_struct *p, int event)
 
 unsigned int sysctl_sched_task_unfilter_period = 200000000;
 
+static inline u64 walt_div_hist_size(u64 sum)
+{
+	if (likely(sched_ravg_hist_size == 5))
+		return sum / 5;
+	return div64_u64(sum, sched_ravg_hist_size);
+}
+
 /*
  * Called when new window is starting for a task, to record cpu usage over
  * recently concluded window(s). Normally 'samples' should be 1. It can be > 1
@@ -1836,7 +1846,7 @@ static void update_history(struct rq *rq, struct task_struct *p,
 	} else if (sysctl_sched_window_stats_policy == WINDOW_STATS_MAX) {
 		demand = max;
 	} else {
-		avg = div64_u64(sum, sched_ravg_hist_size);
+		avg = walt_div_hist_size(sum);
 		if (sysctl_sched_window_stats_policy == WINDOW_STATS_AVG)
 			demand = avg;
 		else
@@ -1869,7 +1879,7 @@ static void update_history(struct rq *rq, struct task_struct *p,
 
 	p->ravg.demand = demand;
 	p->ravg.demand_scaled = demand_scaled;
-	p->ravg.coloc_demand = div64_u64(sum, sched_ravg_hist_size);
+	p->ravg.coloc_demand = walt_div_hist_size(sum);
 	p->ravg.pred_demand = pred_demand;
 	p->ravg.pred_demand_scaled = pred_demand_scaled;
 
@@ -3599,6 +3609,7 @@ static void walt_init_window_dep(void)
 	walt_cpu_util_freq_divisor =
 	    (sched_ravg_window >> SCHED_CAPACITY_SHIFT) * 100;
 	walt_scale_demand_divisor = sched_ravg_window >> SCHED_CAPACITY_SHIFT;
+	walt_scale_demand_reciprocal = reciprocal_value(walt_scale_demand_divisor);
 
 	sched_init_task_load_windows =
 		div64_u64((u64)sysctl_sched_init_task_load_pct *
