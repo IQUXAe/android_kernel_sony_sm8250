@@ -219,13 +219,13 @@ static void serial_clock_vote(unsigned long vote, struct hci_uart *hu)
 	case HCI_IBS_TX_VOTE_CLOCK_OFF:
 		qca->tx_vote = false;
 		qca->tx_votes_off++;
-		new_vote = qca->rx_vote || qca->tx_vote;
+		new_vote = qca->rx_vote;
 		break;
 
 	case HCI_IBS_RX_VOTE_CLOCK_OFF:
 		qca->rx_vote = false;
 		qca->rx_votes_off++;
-		new_vote = qca->rx_vote || qca->tx_vote;
+		new_vote = qca->tx_vote;
 		break;
 
 	default:
@@ -770,7 +770,7 @@ static int qca_enqueue(struct hci_uart *hu, struct sk_buff *skb)
 	       qca->tx_ibs_state);
 
 	/* Prepend skb with frame type */
-	memcpy(skb_push(skb, 1), &hci_skb_pkt_type(skb), 1);
+	*skb_push(skb, 1) = hci_skb_pkt_type(skb);
 
 	/* Don't go to sleep in middle of patch download or
 	 * Out-Of-Band(GPIOs control) sleep is selected.
